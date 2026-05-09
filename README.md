@@ -4,6 +4,16 @@ Microservicio encargado de almacenar las interacciones registradas sobre un meno
 
 ---
 
+## Equipo
+
+| Nombre | Rol |
+|---|---|
+| Génesis Rojas | Líder de Proyecto / DBA / Analista Funcional |
+| Francisco Monsalve | Frontend Mobile / QA |
+| Benjamín Peña | Backend / Integración IA / DevOps |
+
+---
+
 ## Tecnologías
 
 - Java 21
@@ -13,13 +23,7 @@ Microservicio encargado de almacenar las interacciones registradas sobre un meno
 - Lombok
 - Maven
 
----
-
-## Puerto
-
-```
-8083
-```
+**Puerto:** `8083`
 
 ---
 
@@ -29,10 +33,10 @@ Microservicio encargado de almacenar las interacciones registradas sobre un meno
 src/main/java/com/kidcare/chatbot_service/
 │
 ├── model/
-│   └── Interaccion.java → Documento MongoDB que almacena cada interacción registrada sobre un menor
+│   └── Interaccion.java → Documento MongoDB con cada interacción registrada sobre un menor
 │
 ├── repository/
-│   └── InteraccionRepository.java → Acceso a datos de la colección Interaccion (búsqueda por menor e historial)
+│   └── InteraccionRepository.java → Búsqueda por menor e historial en MongoDB
 │
 ├── dto/
 │   ├── InteraccionRequestDTO.java  → Datos para registrar una interacción
@@ -40,17 +44,17 @@ src/main/java/com/kidcare/chatbot_service/
 │
 ├── security/
 │   ├── JwtUtil.java        → Genera, valida y extrae datos de tokens JWT
-│   ├── JwtFilter.java      → Intercepta cada request y valida el token JWT del header
-│   └── SecurityConfig.java → Configura rutas protegidas y política de sesión
+│   ├── JwtFilter.java      → Intercepta requests y valida el JWT del header
+│   └── SecurityConfig.java → Rutas protegidas y política de sesión stateless
 │
 ├── service/
-│   └── InteraccionService.java → Lógica de registro, edición, listado y eliminación de interacciones
+│   └── InteraccionService.java → Registro, edición, listado y eliminación de interacciones
 │
 ├── controller/
-│   └── InteraccionController.java → Endpoints CRUD de /api/interacciones
+│   └── InteraccionController.java → CRUD /api/interacciones
 │
 └── exception/
-    └── GlobalExceptionHandler.java → Maneja errores de validación y excepciones de negocio
+    └── GlobalExceptionHandler.java → Errores de validación → 400 Bad Request
 ```
 
 ---
@@ -76,65 +80,120 @@ src/main/java/com/kidcare/chatbot_service/
 
 ---
 
-## Requisitos previos
+## Cómo iniciar en otro equipo
 
-- Java 21 instalado
-- Maven instalado
-- MongoDB Atlas o MongoDB local corriendo (cuando se conecte la BD)
-- VS Code con Extension Pack for Java y Spring Boot Extension Pack
+### Prerrequisitos
+
+| Herramienta | Versión mínima | Descarga |
+|---|---|---|
+| Java JDK | 21 | https://adoptium.net |
+| Maven | 3.9+ | https://maven.apache.org/download.cgi |
+| Docker Desktop | 4.x | https://www.docker.com/products/docker-desktop |
+| Git | cualquiera | https://git-scm.com |
+
+Verifica la instalación:
+```bash
+java -version    # debe decir openjdk 21
+mvn -version     # debe decir Apache Maven 3.9.x
+docker --version # debe decir Docker version 24.x o superior
+```
 
 ---
 
-## Cómo iniciar el proyecto
-
-### 1. Clonar el repositorio
+### Paso 1 — Clonar el repositorio
 
 ```bash
 git clone https://github.com/vareeth227/KidCare_Chatbot_Backend.git
 cd KidCare_Chatbot_Backend
 ```
 
-### 2. Configurar variables de entorno
+---
 
-Edita el archivo `src/main/resources/application.properties` con tu connection string de MongoDB cuando tengas la base de datos lista:
+### Paso 2 — Iniciar MongoDB con Docker
 
-```properties
-server.port=8083
-spring.application.name=chatbot-service
-spring.data.mongodb.uri=mongodb+srv://TU_USUARIO:TU_PASSWORD@cluster.mongodb.net/db_chatbot
-jwt.secret=kidcare-secret-key-2024-segura-32chars
-jwt.expiration=86400000
+Crea el archivo `docker-compose.yml` en la carpeta raíz del proyecto:
+
+```yaml
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: kidcare-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
 ```
 
-### 3. Compilar el proyecto
+Inicia el contenedor:
+
+```bash
+docker compose up -d
+```
+
+Espera 10–15 segundos y verifica:
+
+```bash
+docker ps
+```
+
+Debes ver `kidcare-mongodb` con estado `Up`.
+
+> **Nota:** MongoDB crea la base de datos automáticamente al insertar el primer documento. No es necesario crearla manualmente.
+
+---
+
+### Paso 3 — Revisar application.properties
+
+El archivo `src/main/resources/application.properties` ya está configurado para conectarse a MongoDB en localhost. No necesitas cambiar nada para desarrollo local.
+
+---
+
+### Paso 4 — Compilar
 
 ```bash
 mvn clean install -DskipTests
 ```
 
-### 4. Ejecutar el proyecto
+Espera a que aparezca `BUILD SUCCESS`.
+
+---
+
+### Paso 5 — Ejecutar
 
 ```bash
 mvn spring-boot:run
 ```
 
-El microservicio estará disponible en `http://localhost:8083`
+Espera a que aparezca:
+
+```
+Started ChatbotServiceApplication in X.XXX seconds
+```
+
+El servicio queda disponible en `http://localhost:8083`.
+
+---
+
+### Paso 6 — Verificar
+
+Necesitas un token JWT válido del usuario-service (puerto 8081). Con ese token:
+
+**PowerShell:**
+```powershell
+$token = "eyJ..."  # pega tu token JWT aquí
+Invoke-RestMethod -Uri "http://localhost:8083/api/interacciones/menor/1" -Method GET -Headers @{Authorization="Bearer $token"}
+```
+
+Respuesta esperada: lista vacía `[]` — confirma que el JWT fue validado correctamente y MongoDB responde.
 
 ---
 
 ## Notas importantes
 
 - El token JWT debe enviarse en el header `Authorization: Bearer <token>` en todas las rutas.
-- La clave `jwt.secret` debe ser la misma en todos los microservicios de KidCare.
+- La clave `jwt.secret` debe ser la misma en todos los microservicios de KidCare: `kidcare-secret-key-2024-segura-32chars`
 - Este microservicio usa **MongoDB** a diferencia de los otros que usan MySQL.
-- Por ahora MongoDB está desactivado en `application.properties`. Cuando se conecte Docker hay que eliminar la línea `spring.autoconfigure.exclude`.
-
----
-
-## Integrantes
-
-| Nombre | Rol |
-|--------|-----|
-| Génesis Rojas | Líder de Proyecto / DBA / Analista Funcional |
-| Francisco Monsalve | Frontend Mobile / QA |
-| Benjamín Peña | Backend / Integración IA / DevOps |
+- La colección de MongoDB se crea automáticamente al registrar la primera interacción.
