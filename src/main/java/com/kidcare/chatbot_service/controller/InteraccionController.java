@@ -44,4 +44,10 @@ public class InteraccionController {
         interaccionService.eliminar(id);
         return ResponseEntity.ok("Interacción eliminada correctamente");
     }
+
+    // GET /api/interacciones/interno/menor/{idMenor} — endpoint interno sin JWT para inter-service
+    @GetMapping("/interno/menor/{idMenor}")
+    public ResponseEntity<List<InteraccionResponseDTO>> listarInterno(@PathVariable Integer idMenor) {
+        return ResponseEntity.ok(interaccionService.obtenerPorMenor(idMenor));
+    }
 }

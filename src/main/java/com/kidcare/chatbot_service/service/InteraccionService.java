@@ -18,16 +18,21 @@ public class InteraccionService {
     @Autowired
     private InteraccionRepository interaccionRepository;
 
+    @Autowired
+    private AnonymizationService anonymizationService;
+
     // Registra una nueva interacción en MongoDB
     public InteraccionResponseDTO registrar(InteraccionRequestDTO dto) {
+        String obsAnonimizadas = anonymizationService.anonimizar(dto.getObservaciones());
 
         Interaccion interaccion = new Interaccion();
         interaccion.setIdMenor(dto.getIdMenor());
-        interaccion.setObservaciones(dto.getObservaciones());
+        interaccion.setObservaciones(obsAnonimizadas);
         interaccion.setOrigen(dto.getOrigen());
         interaccion.setFecha(LocalDate.now());
         interaccion.setEditado(false);
         interaccion.setFallback(dto.getFallback() != null && dto.getFallback());
+        interaccion.setIdHistorial(dto.getIdHistorial());
         interaccionRepository.save(interaccion);
 
         return mapToDTO(interaccion);
