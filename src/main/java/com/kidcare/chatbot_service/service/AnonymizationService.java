@@ -13,10 +13,15 @@ public class AnonymizationService {
     @Value("${claude.api.key:}")
     private String apiKey;
 
-    @Value("${claude.model:claude-sonnet-4-6}")
+    @Value("${claude.model:google/gemini-flash-1.5}")
     private String model;
 
-    private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+    @Value("${claude.api.url:https://openrouter.ai/api/v1/chat/completions}")
+    private String apiUrl;
+
+    /** "bearer" para OpenRouter/OpenAI  |  "x-api-key" para Anthropic directo */
+    @Value("${claude.api.auth-type:bearer}")
+    private String authType;
 
     public String anonimizar(String texto) {
         if (apiKey == null || apiKey.isBlank()) {
@@ -27,8 +32,15 @@ public class AnonymizationService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-api-key", apiKey);
-            headers.set("anthropic-version", "2023-06-01");
+
+            if ("x-api-key".equalsIgnoreCase(authType)) {
+                // Anthropic directo
+                headers.set("x-api-key", apiKey);
+                headers.set("anthropic-version", "2023-06-01");
+            } else {
+                // OpenRouter / OpenAI compatible
+                headers.set("Authorization", "Bearer " + apiKey);
+            }
 
             String prompt = "Anonimiza el siguiente texto de observación pediátrica. " +
                 "Elimina toda información personal identificable (nombres, números de identificación, " +
@@ -46,21 +58,42 @@ public class AnonymizationService {
             body.put("messages", List.of(message));
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(CLAUDE_URL, request, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, request, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                List<?> content = (List<?>) response.getBody().get("content");
-                if (content != null && !content.isEmpty()) {
-                    Map<?, ?> firstBlock = (Map<?, ?>) content.get(0);
-                    Object textValue = firstBlock.get("text");
-                    if (textValue != null) {
-                        return textValue.toString();
-                    }
-                }
+                String resultado = extraerTexto(response.getBody());
+                if (resultado != null) return resultado;
             }
         } catch (Exception e) {
-            // Fallback: retorna el texto original si Claude falla
+            // Fallback: retorna el texto original si la IA falla
         }
         return texto;
+    }
+
+    /**
+     * Extrae el texto de la respuesta soportando dos formatos:
+     * - OpenAI/OpenRouter: choices[0].message.content
+     * - Anthropic:         content[0].text
+     */
+    @SuppressWarnings("unchecked")
+    private String extraerTexto(Map<?, ?> responseBody) {
+        // Formato OpenAI / OpenRouter
+        Object choices = responseBody.get("choices");
+        if (choices instanceof List<?> lista && !lista.isEmpty()) {
+            Map<?, ?> choice = (Map<?, ?>) lista.get(0);
+            Map<?, ?> msg = (Map<?, ?>) choice.get("message");
+            if (msg != null && msg.get("content") != null) {
+                return msg.get("content").toString();
+            }
+        }
+        // Formato Anthropic
+        Object content = responseBody.get("content");
+        if (content instanceof List<?> lista && !lista.isEmpty()) {
+            Map<?, ?> block = (Map<?, ?>) lista.get(0);
+            if (block.get("text") != null) {
+                return block.get("text").toString();
+            }
+        }
+        return null;
     }
 }

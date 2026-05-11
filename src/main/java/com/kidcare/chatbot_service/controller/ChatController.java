@@ -15,10 +15,15 @@ public class ChatController {
     @Value("${claude.api.key:}")
     private String apiKey;
 
-    @Value("${claude.model:claude-sonnet-4-6}")
+    @Value("${claude.model:google/gemini-flash-1.5}")
     private String model;
 
-    private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+    @Value("${claude.api.url:https://openrouter.ai/api/v1/chat/completions}")
+    private String apiUrl;
+
+    /** "bearer" para OpenRouter/OpenAI  |  "x-api-key" para Anthropic directo */
+    @Value("${claude.api.auth-type:bearer}")
+    private String authType;
 
     @PostMapping("/preguntas")
     public ResponseEntity<Map<String, Object>> generarPreguntas(
@@ -44,8 +49,15 @@ public class ChatController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("x-api-key", apiKey);
-            headers.set("anthropic-version", "2023-06-01");
+
+            if ("x-api-key".equalsIgnoreCase(authType)) {
+                // Anthropic directo
+                headers.set("x-api-key", apiKey);
+                headers.set("anthropic-version", "2023-06-01");
+            } else {
+                // OpenRouter / OpenAI compatible
+                headers.set("Authorization", "Bearer " + apiKey);
+            }
 
             String prompt = "Eres un asistente de salud pediátrica. " +
                 "Genera entre 4 y 6 preguntas estructuradas en español para ayudar a un cuidador " +
@@ -63,13 +75,12 @@ public class ChatController {
             body.put("messages", List.of(message));
 
             HttpEntity<Map<String, Object>> httpRequest = new HttpEntity<>(body, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(CLAUDE_URL, httpRequest, Map.class);
+            ResponseEntity<Map> response = restTemplate.postForEntity(apiUrl, httpRequest, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                List<?> content = (List<?>) response.getBody().get("content");
-                if (content != null && !content.isEmpty()) {
-                    Map<?, ?> firstBlock = (Map<?, ?>) content.get(0);
-                    resultado.put("preguntas", firstBlock.get("text").toString().trim());
+                String texto = extraerTexto(response.getBody());
+                if (texto != null) {
+                    resultado.put("preguntas", texto.trim());
                     resultado.put("modo", "ia");
                     return ResponseEntity.ok(resultado);
                 }
@@ -86,5 +97,31 @@ public class ChatController {
         ));
         resultado.put("modo", "fallback");
         return ResponseEntity.ok(resultado);
+    }
+
+    /**
+     * Extrae el texto de la respuesta soportando dos formatos:
+     * - OpenAI/OpenRouter: choices[0].message.content
+     * - Anthropic:         content[0].text
+     */
+    private String extraerTexto(Map<?, ?> responseBody) {
+        // Formato OpenAI / OpenRouter
+        Object choices = responseBody.get("choices");
+        if (choices instanceof List<?> lista && !lista.isEmpty()) {
+            Map<?, ?> choice = (Map<?, ?>) lista.get(0);
+            Map<?, ?> msg = (Map<?, ?>) choice.get("message");
+            if (msg != null && msg.get("content") != null) {
+                return msg.get("content").toString();
+            }
+        }
+        // Formato Anthropic
+        Object content = responseBody.get("content");
+        if (content instanceof List<?> lista && !lista.isEmpty()) {
+            Map<?, ?> block = (Map<?, ?>) lista.get(0);
+            if (block.get("text") != null) {
+                return block.get("text").toString();
+            }
+        }
+        return null;
     }
 }
