@@ -22,4 +22,7 @@ public class InteraccionRequestDTO {
 
     // Indica si fue registrada en modo fallback
     private Boolean fallback = false;
+
+    // Referencia lógica al historial en db_historial (puede ser null)
+    private Integer idHistorial;
 }
