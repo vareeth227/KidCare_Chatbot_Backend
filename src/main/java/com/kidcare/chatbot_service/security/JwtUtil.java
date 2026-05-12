@@ -22,16 +22,6 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String email, String rol) {
-        return Jwts.builder()
-                .subject(email)
-                .claim("rol", rol)
-                .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getKey())
-                .compact();
-    }
-
     public String getEmailFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(getKey())

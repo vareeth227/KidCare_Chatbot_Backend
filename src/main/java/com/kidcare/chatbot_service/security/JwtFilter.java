@@ -1,4 +1,4 @@
-package com.kidcare.chatbot_service.security; // cambiar según MS
+package com.kidcare.chatbot_service.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

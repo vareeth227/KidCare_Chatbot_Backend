@@ -52,7 +52,7 @@ public class InteraccionService {
         Interaccion interaccion = interaccionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Interacción no encontrada"));
 
-        interaccion.setObservaciones(dto.getObservaciones());
+        interaccion.setObservaciones(anonymizationService.anonimizar(dto.getObservaciones()));
         interaccion.setEditado(true);
         interaccion.setFechaEdicion(LocalDate.now());
         interaccionRepository.save(interaccion);
