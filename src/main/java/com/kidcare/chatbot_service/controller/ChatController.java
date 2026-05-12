@@ -1,5 +1,7 @@
 package com.kidcare.chatbot_service.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
@@ -81,7 +83,13 @@ public class ChatController {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 String texto = extraerTexto(response.getBody());
                 if (texto != null) {
-                    resultado.put("preguntas", texto.trim());
+                    try {
+                        List<String> preguntas = new ObjectMapper().readValue(
+                            texto.trim(), new TypeReference<List<String>>() {});
+                        resultado.put("preguntas", preguntas);
+                    } catch (Exception parseEx) {
+                        resultado.put("preguntas", List.of(texto.trim()));
+                    }
                     resultado.put("modo", "ia");
                     return ResponseEntity.ok(resultado);
                 }
