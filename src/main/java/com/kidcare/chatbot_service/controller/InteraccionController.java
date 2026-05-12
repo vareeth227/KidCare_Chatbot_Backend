@@ -45,9 +45,14 @@ public class InteraccionController {
         return ResponseEntity.ok("Interacción eliminada correctamente");
     }
 
-    // GET /api/interacciones/interno/menor/{idMenor} — endpoint interno sin JWT para inter-service
+    // GET /api/interacciones/interno/menor/{idMenor}?ids=id1,id2 — endpoint interno sin JWT
     @GetMapping("/interno/menor/{idMenor}")
-    public ResponseEntity<List<InteraccionResponseDTO>> listarInterno(@PathVariable Integer idMenor) {
-        return ResponseEntity.ok(interaccionService.obtenerPorMenor(idMenor));
+    public ResponseEntity<List<InteraccionResponseDTO>> listarInterno(
+            @PathVariable Integer idMenor,
+            @RequestParam(required = false) String ids) {
+        List<String> idList = (ids != null && !ids.isBlank())
+                ? java.util.Arrays.asList(ids.split(","))
+                : null;
+        return ResponseEntity.ok(interaccionService.obtenerPorMenorFiltrado(idMenor, idList));
     }
 }

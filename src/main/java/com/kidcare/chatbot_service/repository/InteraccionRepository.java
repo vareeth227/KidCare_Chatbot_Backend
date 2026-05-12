@@ -15,4 +15,7 @@ public interface InteraccionRepository extends MongoRepository<Interaccion, Stri
 
     // Obtiene todas las interacciones de un historial específico
     List<Interaccion> findByIdHistorial(Integer idHistorial);
+
+    // Obtiene interacciones de un menor filtrando por IDs específicos
+    List<Interaccion> findByIdMenorAndIdIn(Integer idMenor, List<String> ids);
 }

@@ -46,6 +46,15 @@ public class InteraccionService {
                 .collect(Collectors.toList());
     }
 
+    // Obtiene interacciones de un menor filtrando por IDs específicos (uso médico)
+    public List<InteraccionResponseDTO> obtenerPorMenorFiltrado(Integer idMenor, List<String> ids) {
+        if (ids == null || ids.isEmpty()) return obtenerPorMenor(idMenor);
+        return interaccionRepository.findByIdMenorAndIdIn(idMenor, ids)
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
     // Edita el contenido de una interacción existente
     public InteraccionResponseDTO editar(String id, InteraccionRequestDTO dto) {
 
