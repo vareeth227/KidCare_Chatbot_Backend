@@ -1,0 +1,43 @@
+services:
+  ms-chatbot:
+    build: .
+    image: kidcare-ms-chatbot
+    container_name: kidcare-chatbot
+    ports:
+      - "8083:8083"
+    environment:
+      - MONGODB_URI=mongodb://mongo-chatbot:27017/db_chatbot
+      - JWT_SECRET=${JWT_SECRET:-kidcare_super_secret_jwt_key_for_dev_only_1234567890}
+      - JWT_EXPIRATION=86400000
+      - CLAUDE_API_URL=${CLAUDE_API_URL:-https://openrouter.ai/api/v1/chat/completions}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
+      - CLAUDE_API_AUTH_TYPE=${CLAUDE_API_AUTH_TYPE:-bearer}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-google/gemini-flash-1.5}
+      - PORT=8083
+    depends_on:
+      mongo-chatbot:
+        condition: service_healthy
+    networks:
+      - kidcare-network
+
+  mongo-chatbot:
+    image: mongo:7.0
+    container_name: mongo-chatbot
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_chatbot_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kidcare-network
+
+volumes:
+  mongo_chatbot_data:
+
+networks:
+  kidcare-network:
+    driver: bridge
