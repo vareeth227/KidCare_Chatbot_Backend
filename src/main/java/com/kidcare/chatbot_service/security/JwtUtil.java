@@ -48,6 +48,8 @@ public class JwtUtil {
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
+            System.err.println("[JWT ERROR] Falla validacion de token: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }
